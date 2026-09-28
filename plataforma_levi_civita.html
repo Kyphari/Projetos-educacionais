@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Levi-Civita - Mecânica Clássica</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MathJax para equações LaTeX -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Three.js para modelagem 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; 
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .math-box {
+            background: rgba(30, 41, 59, 0.7);
+            border-left: 4px solid #10b981;
+            padding: 1.5rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            margin: 1.5rem 0;
+            overflow: hidden;
+            display: block;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: currentColor;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 2px;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 450px;
+            background: #090d16;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.25), inset 0 0 25px rgba(0,0,0,0.8);
+            position: relative;
+        }
+    </style>
+</head>
+<body class="text-slate-200 antialiased h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-slate-800 border-r border-slate-700 flex flex-col z-20 shadow-2xl flex-shrink-0">
+        <div class="p-6 border-b border-slate-700">
+            <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                Levi-Civita
+            </h1>
+            <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest font-bold">Plataforma Interativa</p>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="switchTab('tab-3d')" id="btn-tab-3d" class="tab-btn w-full flex items-center p-3 rounded-lg text-left text-slate-300 hover:bg-slate-700 hover:text-white transition-colors bg-slate-700 text-white font-semibold">
+                <i class="fa-solid fa-cube w-6 text-center text-blue-400"></i> Visualizador 3D
+            </button>
+            <button onclick="switchTab('tab-theory')" id="btn-tab-theory" class="tab-btn w-full flex items-center p-3 rounded-lg text-left text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
+                <i class="fa-solid fa-book-open w-6 text-center text-emerald-400"></i> Teoria e Matemática
+            </button>
+            <button onclick="switchTab('tab-cross')" id="btn-tab-cross" class="tab-btn w-full flex items-center p-3 rounded-lg text-left text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
+                <i class="fa-solid fa-vector-square w-6 text-center text-purple-400"></i> Produto Vetorial
+            </button>
+            <button onclick="switchTab('tab-perm')" id="btn-tab-perm" class="tab-btn w-full flex items-center p-3 rounded-lg text-left text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
+                <i class="fa-solid fa-arrows-spin w-6 text-center text-orange-400"></i> Permutação
+            </button>
+        </nav>
+        
+        <div class="p-4 text-xs text-slate-500 border-t border-slate-700 text-center">
+            Baseado em Thornton & Marion
+        </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto relative bg-[#0b1121]">
+        
+        <!-- ================= ABA 1: VISUALIZADOR 3D DO TENSOR ================= -->
+        <section id="tab-3d" class="tab-content active p-6 md:p-12 max-w-5xl mx-auto">
+            <div class="mb-6">
+                <p class="text-xs text-blue-400 uppercase tracking-widest font-bold mb-2">Simulação Interativa</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-4">O Tensor Levi-Civita em 3D</h2>
+                <p class="text-slate-400 text-sm md:text-base mb-4">
+                    O símbolo de permutação $\varepsilon_{ijk}$ possui componentes que dependem da dimensão espacial. 
+                    O modelo gira vagarosamente de forma automática. <strong>Passe o mouse</strong> sobre os blocos coloridos para inspecionar os índices exatos. 
+                    Clique e arraste para rotacionar livremente. <strong>Use a roda do mouse (scroll)</strong> para <strong>aumentar ou diminuir o tamanho da modelagem 3D</strong>. A cor indica o valor: 
+                    <span class="text-emerald-400 font-bold">+1 (Verde)</span>, 
+                    <span class="text-red-400 font-bold">-1 (Vermelho)</span> e 
+                    <span class="text-slate-500 font-bold">0 (Cinza translúcido)</span>.
+                </p>
+                
+                <div class="flex space-x-3 items-center" id="dim-btns">
+                    <span class="text-sm font-semibold text-slate-400 mr-2">Escolha a Dimensão:</span>
+                    <button onclick="changeDimension(1)" id="btn-dim-1" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm font-bold transition-colors">1D</button>
+                    <button onclick="changeDimension(2)" id="btn-dim-2" class="px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-sm font-bold transition-colors">2D</button>
+                    <button onclick="changeDimension(3)" id="btn-dim-3" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-bold shadow-lg shadow-blue-500/30 transition-colors">3D</button>
+                </div>
+            </div>
+            
+            <div id="canvas-tensor" class="canvas-container cursor-grab active:cursor-grabbing">
+                <!-- Tooltip flutuante para mostrar os índices do tensor ao passar o mouse -->
+                <div id="tensor-tooltip" class="absolute top-4 left-4 bg-slate-900/90 border border-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-mono shadow-xl pointer-events-none hidden z-30 backdrop-blur-md">
+                    Índice: <span id="tooltip-text" class="text-emerald-400 font-bold">--</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= ABA 2: TEORIA E MATEMÁTICA ================= -->
+        <section id="tab-theory" class="tab-content p-6 md:p-12 max-w-4xl mx-auto">
+            <div class="mb-8">
+                <p class="text-xs text-emerald-400 uppercase tracking-widest font-bold mb-2">Fundamentos</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-4">Teoria e Matemática</h2>
+                <p class="text-slate-400 text-sm md:text-base leading-relaxed mb-6">
+                    Na dinâmica clássica, grandezas físicas são representadas por escalares e vetores dependendo de suas propriedades sob transformação de coordenadas. O <strong>símbolo de permutação</strong> (ou densidade de Levi-Civita), denotado por $\varepsilon_{ijk}$, surge como uma ferramenta essencial para simplificar produtos vetoriais e cálculos tensoriais.
+                </p>
+            </div>
+
+            <h3 class="text-xl font-bold text-slate-200 mb-4 border-b border-slate-700 pb-2">Definição Formal</h3>
+            <p class="text-slate-400 mb-4">
+                O tensor de Levi-Civita de ordem 3 é definido pelas seguintes propriedades (Eq. 1.67):
+            </p>
+            
+            <div class="math-box">
+                <div class="text-lg md:text-xl w-full text-center">
+                    $$
+                    \varepsilon_{ijk} = 
+                    \begin{cases} 
+                    +1, & \text{se } i, j, k \text{ for uma permutação par de 1, 2, 3} \\
+                    -1, & \text{se } i, j, k \text{ for uma permutação ímpar de 1, 2, 3} \\
+                    0, & \text{se houver algum índice repetido}
+                    \end{cases}
+                    $$
+                </div>
+            </div>
+
+            <p class="text-slate-400 mb-4">
+                Uma permutação par ocorre quando há um número par de trocas de posição. Permutações cíclicas (123 $\rightarrow$ 231 $\rightarrow$ 312) são sempre pares. Desse modo:
+            </p>
+
+            <ul class="list-disc list-inside text-slate-300 space-y-2 mb-8 bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <li>$\varepsilon_{123} = \varepsilon_{231} = \varepsilon_{312} = +1$</li>
+                <li>$\varepsilon_{132} = \varepsilon_{213} = \varepsilon_{321} = -1$</li>
+                <li>$\varepsilon_{112} = \varepsilon_{221} = \varepsilon_{333} = 0$, etc.</li>
+            </ul>
+
+            <div class="mt-12 p-4 border-l-4 border-blue-500 bg-blue-900/20 text-sm text-slate-400 rounded-r-lg">
+                <strong>Referência Bibliográfica:</strong><br>
+                THORNTON, Stephen T.; MARION, Jerry B. <em>Dinâmica Clássica de Partículas e Sistemas</em>. Cengage Learning. Capítulo 1: Matrizes, vetores e cálculo vetorial.
+            </div>
+        </section>
+
+        <!-- ================= ABA 3: PRODUTO VETORIAL ================= -->
+        <section id="tab-cross" class="tab-content p-6 md:p-12 max-w-5xl mx-auto">
+            <div class="mb-8">
+                <p class="text-xs text-purple-400 uppercase tracking-widest font-bold mb-2">Aplicação Prática</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-4">O Produto Vetorial</h2>
+                <p class="text-slate-400 text-sm md:text-base leading-relaxed">
+                    Se $\mathbf{C} = \mathbf{A} \times \mathbf{B}$, os componentes de $\mathbf{C}$ são avaliados explicitamente utilizando as propriedades do tensor. <strong>Utilize a roda do mouse</strong> no visualizador ao lado para <strong>aumentar ou diminuir o tamanho dos vetores modelados</strong> em 3D.
+                </p>
+            </div>
+
+            <div class="math-box">
+                <div class="text-lg md:text-xl w-full text-center">
+                    $$ C_i \equiv \sum_{j,k} \varepsilon_{ijk} A_j B_k \quad \text{(Eq. 1.66)} $$
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                <!-- Controles -->
+                <div class="space-y-6">
+                    <p class="text-sm text-slate-400 mb-4">Modifique os valores para calcular o vetor ortogonal $\mathbf{C}$.</p>
+                    
+                    <!-- Vetor A -->
+                    <div class="bg-slate-800 p-5 rounded-xl border border-red-900 shadow-lg">
+                        <h3 class="text-red-400 font-bold mb-4">Vetor A (Vermelho)</h3>
+                        <div class="grid grid-cols-3 gap-4 text-xs font-mono">
+                            <div class="text-red-500">
+                                <label class="block mb-1">Ax: <span id="val-ax">3</span></label>
+                                <input type="range" id="ax" min="-5" max="5" value="3" oninput="updateCrossProduct()">
+                            </div>
+                            <div class="text-red-500">
+                                <label class="block mb-1">Ay: <span id="val-ay">0</span></label>
+                                <input type="range" id="ay" min="-5" max="5" value="0" oninput="updateCrossProduct()">
+                            </div>
+                            <div class="text-red-500">
+                                <label class="block mb-1">Az: <span id="val-az">0</span></label>
+                                <input type="range" id="az" min="-5" max="5" value="0" oninput="updateCrossProduct()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vetor B -->
+                    <div class="bg-slate-800 p-5 rounded-xl border border-green-900 shadow-lg">
+                        <h3 class="text-green-400 font-bold mb-4">Vetor B (Verde)</h3>
+                        <div class="grid grid-cols-3 gap-4 text-xs font-mono">
+                            <div class="text-green-500">
+                                <label class="block mb-1">Bx: <span id="val-bx">0</span></label>
+                                <input type="range" id="bx" min="-5" max="5" value="0" oninput="updateCrossProduct()">
+                            </div>
+                            <div class="text-green-500">
+                                <label class="block mb-1">By: <span id="val-by">3</span></label>
+                                <input type="range" id="by" min="-5" max="5" value="3" oninput="updateCrossProduct()">
+                            </div>
+                            <div class="text-green-500">
+                                <label class="block mb-1">Bz: <span id="val-bz">0</span></label>
+                                <input type="range" id="bz" min="-5" max="5" value="0" oninput="updateCrossProduct()">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vetor Resultante C -->
+                    <div class="bg-blue-900/40 p-5 rounded-xl border border-blue-800">
+                        <h3 class="text-blue-400 font-bold mb-2">Vetor Resultante C (Azul)</h3>
+                        <div class="text-lg font-mono text-white" id="result-c">
+                            C = (0, 0, 9)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas do Produto Vetorial com zoom e rotação -->
+                <div>
+                    <div id="canvas-vectors" class="canvas-container h-full min-h-[350px] cursor-grab active:cursor-grabbing"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= ABA 4: PERMUTAÇÃO NO ESPAÇO ================= -->
+        <section id="tab-perm" class="tab-content p-6 md:p-12 max-w-4xl mx-auto">
+            <div class="mb-8">
+                <p class="text-xs text-orange-400 uppercase tracking-widest font-bold mb-2">Vetores Unitários</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-4">Permutação no Espaço</h2>
+                <p class="text-slate-400 text-sm md:text-base leading-relaxed">
+                    A ortogonalidade dos vetores unitários $\mathbf{e}_i$ requer que o produto vetorial obedeça estritamente à orientação espacial e à regra da mão direita (Thornton & Marion).
+                </p>
+            </div>
+
+            <p class="text-slate-300 mb-4">
+                Pode-se utilizar o símbolo de permutação para expressar o produto de vetores base de forma compacta (Eq. 1.79b):
+            </p>
+
+            <div class="math-box">
+                <div class="text-lg md:text-xl w-full text-center">
+                    $$ \mathbf{e}_i \times \mathbf{e}_j = \sum_k \varepsilon_{ijk} \mathbf{e}_k $$
+                </div>
+            </div>
+
+            <p class="text-slate-400 mt-6 mb-4">
+                Expandindo esta somatória, confirmamos o comportamento cíclico fundamental para a álgebra tensorial e para a representação do <strong>tensor de inércia</strong> no corpo rígido:
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div class="bg-slate-800 p-4 rounded-xl border-l-4 border-emerald-500">
+                    <h4 class="font-bold text-white mb-2">Permutação Cíclica (Positiva)</h4>
+                    <ul class="font-mono text-emerald-400 text-sm space-y-2">
+                        <li>$e_1 \times e_2 = +e_3$</li>
+                        <li>$e_2 \times e_3 = +e_1$</li>
+                        <li>$e_3 \times e_1 = +e_2$</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-xl border-l-4 border-red-500">
+                    <h4 class="font-bold text-white mb-2">Permutação Anti-cíclica (Negativa)</h4>
+                    <ul class="font-mono text-red-400 text-sm space-y-2">
+                        <li>$e_2 \times e_1 = -e_3$</li>
+                        <li>$e_3 \times e_2 = -e_1$</li>
+                        <li>$e_1 \times e_3 = -e_2$</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-slate-700', 'text-white', 'font-semibold');
+                el.classList.add('text-slate-400');
+            });
+
+            document.getElementById(tabId).classList.add('active');
+            
+            const btnId = 'btn-' + tabId;
+            const btn = document.getElementById(btnId);
+            if(btn) {
+                btn.classList.remove('text-slate-400');
+                btn.classList.add('bg-slate-700', 'text-white', 'font-semibold');
+            }
+            
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+
+            setTimeout(() => {
+                if (tabId === 'tab-3d' && rendererTensor) {
+                    const c1 = document.getElementById('canvas-tensor');
+                    if (c1) {
+                        cameraTensor.aspect = c1.clientWidth / c1.clientHeight;
+                        cameraTensor.updateProjectionMatrix();
+                        rendererTensor.setSize(c1.clientWidth, c1.clientHeight);
+                    }
+                }
+                if (tabId === 'tab-cross' && rendererVec) {
+                    const c2 = document.getElementById('canvas-vectors');
+                    if (c2) {
+                        cameraVec.aspect = c2.clientWidth / c2.clientHeight;
+                        cameraVec.updateProjectionMatrix();
+                        rendererVec.setSize(c2.clientWidth, c2.clientHeight);
+                    }
+                }
+            }, 50);
+        }
+
+        let sceneTensor, cameraTensor, rendererTensor, tensorGroup;
+        let isDraggingTensor = false;
+        let previousMouseTensor = { x: 0, y: 0 };
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function initTensor3D() {
+            const container = document.getElementById('canvas-tensor');
+            sceneTensor = new THREE.Scene();
+            sceneTensor.fog = new THREE.FogExp2(0x090d16, 0.035);
+            
+            cameraTensor = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            cameraTensor.position.set(6, 6, 9);
+            cameraTensor.lookAt(0, 0, 0);
+
+            rendererTensor = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            rendererTensor.setSize(container.clientWidth, container.clientHeight);
+            rendererTensor.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            rendererTensor.shadowMap.enabled = true;
+            container.appendChild(rendererTensor.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            sceneTensor.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight1.position.set(10, 20, 15);
+            sceneTensor.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0x38bdf8, 0.6);
+            dirLight2.position.set(-10, -10, -10);
+            sceneTensor.add(dirLight2);
+
+            tensorGroup = new THREE.Group();
+            sceneTensor.add(tensorGroup);
+
+            buildTensorGrid(3);
+
+            container.addEventListener('mousedown', (e) => {
+                isDraggingTensor = true;
+                previousMouseTensor = { x: e.clientX, y: e.clientY };
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                const rect = rendererTensor.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                if (isDraggingTensor) {
+                    const deltaMove = {
+                        x: e.clientX - previousMouseTensor.x,
+                        y: e.clientY - previousMouseTensor.y
+                    };
+                    tensorGroup.rotation.y += deltaMove.x * 0.008;
+                    tensorGroup.rotation.x += deltaMove.y * 0.008;
+                    previousMouseTensor = { x: e.clientX, y: e.clientY };
+                }
+            });
+            
+            window.addEventListener('mouseup', () => { isDraggingTensor = false; });
+
+            // ZOOM POR SCROLL: Aumentar e Diminuir o tamanho da modelagem 3D do Tensor
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                let scaleFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                tensorGroup.scale.multiplyScalar(scaleFactor);
+                tensorGroup.scale.clampScalar(0.3, 3.5);
+            }, { passive: false });
+
+            container.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 1) {
+                    isDraggingTensor = true;
+                    previousMouseTensor = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            }, {passive: true});
+            
+            container.addEventListener('touchmove', (e) => {
+                if(isDraggingTensor && e.touches.length === 1) {
+                    const deltaMove = {
+                        x: e.touches[0].clientX - previousMouseTensor.x,
+                        y: e.touches[0].clientY - previousMouseTensor.y
+                    };
+                    tensorGroup.rotation.y += deltaMove.x * 0.008;
+                    tensorGroup.rotation.x += deltaMove.y * 0.008;
+                    previousMouseTensor = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            }, {passive: true});
+            
+            window.addEventListener('touchend', () => { isDraggingTensor = false; });
+
+            animateTensor();
+        }
+
+        function buildTensorGrid(dim) {
+            while(tensorGroup.children.length > 0) {
+                tensorGroup.remove(tensorGroup.children[0]);
+            }
+            tensorGroup.rotation.set(0.3, -0.4, 0);
+
+            const spacing = 1.1;
+
+            if (dim === 1) {
+                createBlockHD(1, 0, 0, 0, [1, 1, 1]);
+            } 
+            else if (dim === 2) {
+                for(let i = 1; i <= 2; i++) {
+                    for(let j = 1; j <= 2; j++) {
+                        let val = 0;
+                        if(i === 1 && j === 2) val = 1;
+                        if(i === 2 && j === 1) val = -1;
+                        createBlockHD(val, (i-1.5)*spacing, (j-1.5)*spacing, 0, [i, j]);
+                    }
+                }
+            } 
+            else if (dim === 3) {
+                for(let i = 1; i <= 3; i++) {
+                    for(let j = 1; j <= 3; j++) {
+                        for(let k = 1; k <= 3; k++) {
+                            let val = 0;
+                            if(i !== j && j !== k && i !== k) {
+                                if((i==1&&j==2&&k==3) || (i==2&&j==3&&k==1) || (i==3&&j==1&&k==2)) val = 1;
+                                else val = -1;
+                            }
+                            createBlockHD(val, (i-2)*spacing, (j-2)*spacing, (k-2)*spacing, [i, j, k]);
+                        }
+                    }
+                }
+            }
+        }
+
+        function createBlockHD(val, x, y, z, indices) {
+            let color = 0x334155; 
+            let opacity = 0.12;
+            let emissiveColor = 0x000000;
+
+            if (val === 1) { 
+                color = 0x10b981; 
+                opacity = 0.90; 
+                emissiveColor = 0x047857;
+            }
+            if (val === -1) { 
+                color = 0xef4444; 
+                opacity = 0.90; 
+                emissiveColor = 0xb91c1c;
+            }
+
+            const geometry = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+            const material = new THREE.MeshPhysicalMaterial({ 
+                color: color, 
+                transparent: true, 
+                opacity: opacity,
+                roughness: 0.15,
+                metalness: 0.25,
+                clearcoat: 0.5,
+                emissive: emissiveColor,
+                emissiveIntensity: val !== 0 ? 0.25 : 0
+            });
+            
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.set(x, y, z);
+            cube.userData = { indices: indices, value: val };
+            tensorGroup.add(cube);
+
+            // Linhas de contorno mais intensas e destacadas ao redor do cubo maior
+            const edgesGeometry = new THREE.EdgesGeometry(geometry);
+            const lineMaterial = new THREE.LineBasicMaterial({ 
+                color: val !== 0 ? 0xffffff : 0x94a3b8, 
+                linewidth: 2,
+                transparent: true,
+                opacity: val !== 0 ? 0.95 : 0.4
+            });
+            const wireframe = new THREE.LineSegments(edgesGeometry, lineMaterial);
+            cube.add(wireframe);
+        }
+
+        function changeDimension(dim) {
+            buildTensorGrid(dim);
+            
+            document.getElementById('btn-dim-1').className = "px-5 py-2 rounded-lg text-white text-sm font-bold transition-colors " + (dim === 1 ? "bg-blue-600 shadow-lg shadow-blue-500/30" : "bg-slate-700 hover:bg-slate-600");
+            document.getElementById('btn-dim-2').className = "px-5 py-2 rounded-lg text-white text-sm font-bold transition-colors " + (dim === 2 ? "bg-blue-600 shadow-lg shadow-blue-500/30" : "bg-slate-700 hover:bg-slate-600");
+            document.getElementById('btn-dim-3').className = "px-5 py-2 rounded-lg text-white text-sm font-bold transition-colors " + (dim === 3 ? "bg-blue-600 shadow-lg shadow-blue-500/30" : "bg-slate-700 hover:bg-slate-600");
+        }
+
+        function animateTensor() {
+            requestAnimationFrame(animateTensor);
+
+            if (!isDraggingTensor && tensorGroup) {
+                tensorGroup.rotation.y += 0.002;
+            }
+
+            if (cameraTensor && sceneTensor) {
+                raycaster.setFromCamera(mouse, cameraTensor);
+                const intersects = raycaster.intersectObjects(tensorGroup.children);
+                const tooltip = document.getElementById('tensor-tooltip');
+                const tooltipText = document.getElementById('tooltip-text');
+
+                if (intersects.length > 0) {
+                    const obj = intersects[0].object;
+                    if (obj.userData && obj.userData.indices) {
+                        const idx = obj.userData.indices;
+                        const val = obj.userData.value;
+                        const idxStr = idx.length === 3 ? `ε(${idx[0]},${idx[1]},${idx[2]})` : (idx.length === 2 ? `ε(${idx[0]},${idx[1]})` : `ε(1)`);
+                        tooltipText.innerText = `${idxStr} = ${val > 0 ? '+' + val : val}`;
+                        tooltip.classList.remove('hidden');
+                    }
+                } else {
+                    tooltip.classList.add('hidden');
+                }
+            }
+
+            rendererTensor.render(sceneTensor, cameraTensor);
+        }
+
+        let sceneVec, cameraVec, rendererVec;
+        let arrowA, arrowB, arrowC;
+        let isDraggingVec = false;
+        let previousMouseVec = { x: 0, y: 0 };
+        let vectorGroup;
+
+        function initVectors3D() {
+            const container = document.getElementById('canvas-vectors');
+            sceneVec = new THREE.Scene();
+            sceneVec.fog = new THREE.FogExp2(0x090d16, 0.03);
+            
+            cameraVec = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            cameraVec.position.set(14, 14, 20);
+            cameraVec.lookAt(0, 0, 0);
+
+            rendererVec = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            rendererVec.setSize(container.clientWidth, container.clientHeight);
+            rendererVec.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(rendererVec.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            sceneVec.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(10, 20, 10);
+            sceneVec.add(dirLight);
+
+            vectorGroup = new THREE.Group();
+            sceneVec.add(vectorGroup);
+
+            const axesHelper = new THREE.AxesHelper(8);
+            vectorGroup.add(axesHelper);
+            
+            const gridHelper = new THREE.GridHelper(16, 16, 0x334155, 0x1e293b);
+            vectorGroup.add(gridHelper);
+
+            const origin = new THREE.Vector3(0, 0, 0);
+            
+            arrowA = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), origin, 3, 0xf87171, 0.6, 0.4);
+            arrowB = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), origin, 3, 0x4ade80, 0.6, 0.4);
+            arrowC = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), origin, 9, 0x60a5fa, 0.6, 0.4);
+
+            vectorGroup.add(arrowA);
+            vectorGroup.add(arrowB);
+            vectorGroup.add(arrowC);
+
+            container.addEventListener('mousedown', (e) => {
+                isDraggingVec = true;
+                previousMouseVec = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (isDraggingVec) {
+                    const deltaMove = {
+                        x: e.clientX - previousMouseVec.x,
+                        y: e.clientY - previousMouseVec.y
+                    };
+                    vectorGroup.rotation.y += deltaMove.x * 0.008;
+                    vectorGroup.rotation.x += deltaMove.y * 0.008;
+                    previousMouseVec = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            window.addEventListener('mouseup', () => { isDraggingVec = false; });
+
+            // ZOOM POR SCROLL: Aumentar e Diminuir o tamanho dos Vetores
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                let scaleFactor = e.deltaY < 0 ? 1.1 : 0.9;
+                vectorGroup.scale.multiplyScalar(scaleFactor);
+                vectorGroup.scale.clampScalar(0.4, 3.0);
+            }, { passive: false });
+
+            animateVectors();
+        }
+
+        function animateVectors() {
+            requestAnimationFrame(animateVectors);
+            rendererVec.render(sceneVec, cameraVec);
+        }
+
+        function updateCrossProduct() {
+            const ax = parseFloat(document.getElementById('ax').value);
+            const ay = parseFloat(document.getElementById('ay').value);
+            const az = parseFloat(document.getElementById('az').value);
+            
+            const bx = parseFloat(document.getElementById('bx').value);
+            const by = parseFloat(document.getElementById('by').value);
+            const bz = parseFloat(document.getElementById('bz').value);
+
+            document.getElementById('val-ax').innerText = ax;
+            document.getElementById('val-ay').innerText = ay;
+            document.getElementById('val-az').innerText = az;
+            
+            document.getElementById('val-bx').innerText = bx;
+            document.getElementById('val-by').innerText = by;
+            document.getElementById('val-bz').innerText = bz;
+
+            const cx = (ay * bz) - (az * by);
+            const cy = (az * bx) - (ax * bz);
+            const cz = (ax * by) - (ay * bx);
+
+            document.getElementById('result-c').innerText = `C = (${cx}, ${cy}, ${cz})`;
+
+            if(arrowA && arrowB && arrowC) {
+                let vecA = new THREE.Vector3(ax, ay, az);
+                if(vecA.length() > 0) {
+                    arrowA.setDirection(vecA.clone().normalize());
+                    arrowA.setLength(vecA.length(), 0.6, 0.4);
+                } else arrowA.setLength(0.001);
+
+                let vecB = new THREE.Vector3(bx, by, bz);
+                if(vecB.length() > 0) {
+                    arrowB.setDirection(vecB.clone().normalize());
+                    arrowB.setLength(vecB.length(), 0.6, 0.4);
+                } else arrowB.setLength(0.001);
+
+                let vecC = new THREE.Vector3(cx, cy, cz);
+                if(vecC.length() > 0) {
+                    arrowC.setDirection(vecC.clone().normalize());
+                    arrowC.setLength(vecC.length(), 0.6, 0.4);
+                } else arrowC.setLength(0.001);
+            }
+        }
+
+        window.onload = function() {
+            initTensor3D();
+            initVectors3D();
+            
+            window.addEventListener('resize', () => {
+                const c1 = document.getElementById('canvas-tensor');
+                if(c1 && rendererTensor) {
+                    cameraTensor.aspect = c1.clientWidth / c1.clientHeight;
+                    cameraTensor.updateProjectionMatrix();
+                    rendererTensor.setSize(c1.clientWidth, c1.clientHeight);
+                }
+
+                const c2 = document.getElementById('canvas-vectors');
+                if(c2 && rendererVec) {
+                    cameraVec.aspect = c2.clientWidth / c2.clientHeight;
+                    cameraVec.updateProjectionMatrix();
+                    rendererVec.setSize(c2.clientWidth, c2.clientHeight);
+                }
+            });
+        };
+    </script>
+</body>
+</html>
